@@ -1,0 +1,18 @@
+# Ejecutables y archivos objeto
+*.o
+*.out
+trabajo_paralelo
+
+cat <<EOF > .gitignore
+# Ejecutables y archivos objeto
+*.o
+*.out
+trabajo_paralelo
+
+# Archivos de reportes locales que genera el programa
+resultados.txt
+log.txt
+
+# Carpetas ocultas de sistemas o editores
+.vscode/
+.DS_Store

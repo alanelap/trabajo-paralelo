@@ -4,7 +4,7 @@ Este repositorio contiene la solución desarrollada para la asignatura **Computa
 
 ---
 
-## 📋 Descripción del Problema (Caso Cruz Morada)
+## Descripción del Problema (Caso Cruz Morada)
 
 La cadena de farmacias "Cruz Morada" genera diariamente archivos consolidados con miles de transacciones de ventas distribuidos en servidores SFTP remotos. El objetivo fundamental del sistema es calcular el promedio de los montos aplicados en las transacciones, segmentando los resultados estrictamente por el género del cliente (`MASCULINO` / `FEMENINO`).
 
@@ -15,7 +15,7 @@ La cadena de farmacias "Cruz Morada" genera diariamente archivos consolidados co
 
 ---
 
-## 🛠️ Arquitectura del Sistema y Solución
+## Arquitectura del Sistema y Solución
 
 El proyecto evolucionó a través de fases incrementales para asegurar la estabilidad, el manejo correcto de errores y la escalabilidad del software:
 
@@ -26,7 +26,7 @@ El proyecto evolucionó a través de fases incrementales para asegurar la estabi
 
 ---
 
-## 🚀 Optimización Concurrente con OpenMP
+## Optimización Concurrente con OpenMP
 
 Para cumplir con las restricciones del problema y maximizar el rendimiento en arquitecturas modernas, el código paralelo implementa tres estrategias clave:
 
@@ -43,7 +43,7 @@ Las variables globales encargadas de almacenar las sumas acumuladas y los contad
 
 ---
 
-## 📊 Análisis de Rendimiento y Escalabilidad
+## Análisis de Rendimiento y Escalabilidad
 
 Las pruebas empíricas se ejecutaron en un entorno virtualizado **Ubuntu 24.04 LTS** montado sobre un procesador **Apple Silicon M2** empleando el hipervisor Parallels Desktop, configurado estrictamente con **4 núcleos de CPU virtuales**.
 
@@ -62,7 +62,7 @@ Las pruebas empíricas se ejecutaron en un entorno virtualizado **Ubuntu 24.04 L
 
 ---
 
-## 🛠️ Instrucciones de Compilación y Ejecución
+## Instrucciones de Compilación y Ejecución
 
 El proyecto cuenta con un archivo `Makefile` que automatiza por completo las banderas de optimización y el enlazado de bibliotecas dinámicas.
 

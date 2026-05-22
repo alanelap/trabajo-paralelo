@@ -1,4 +1,6 @@
-// Control de versiones: Fase 3 y Fase 4 finalizadas con exito.
+// Control de versiones: Fase 3 y Fase 4 finalizadas con éxito de forma secuencial y paralela.
+
+
 
 #include <iostream>
 #include <fstream>

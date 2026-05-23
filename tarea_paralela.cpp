@@ -66,7 +66,7 @@ std::string consultar_genero_api(const std::string& uuid) {
     long http_code = 0;
 
     if(curl) {
-        std::string url = "http://localhost:8080/cpyd/person/" + uuid;
+        std::string url = "https://api.sebastian.cl/cpyd/v1/person/" + uuid;
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);

@@ -4,64 +4,62 @@
 #include <string>
 #include <algorithm>
 #include <unordered_map>
-#include <vector>
 #include <curl/curl.h>
-#include <omp.h>
-#include <unistd.h> // Para usar usleep y no saturar el servidor
 
+// Estructura para almacenar la caché de hilos
 std::unordered_map<std::string, std::string> cache_clientes;
 
+// Variables para acumular las compras por género [cite: 71]
 double suma_femenino = 0.0;
 long cuenta_femenino = 0;
 
 double suma_masculino = 0.0;
 long cuenta_masculino = 0;
 
+// Función cURL para capturar el texto de la API
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
 
+// Función para remover comillas
 std::string limpiar_comillas(std::string texto) {
     texto.erase(std::remove(texto.begin(), texto.end(), '"'), texto.end());
     return texto;
 }
 
+// Función que extrae el género del JSON sin librerías externas
 std::string extraer_genero(const std::string& json_txt) {
     std::string clave = "\"gender\":";
     size_t pos = json_txt.find(clave);
     if (pos == std::string::npos) return "NO_DEFINIDO";
+    
     pos += clave.length();
     size_t inicio_comilla = json_txt.find("\"", pos);
     if (inicio_comilla == std::string::npos) return "NO_DEFINIDO";
+    
     size_t fin_comilla = json_txt.find("\"", inicio_comilla + 1);
     if (fin_comilla == std::string::npos) return "NO_DEFINIDO";
+    
     return json_txt.substr(inicio_comilla + 1, fin_comilla - inicio_comilla - 1);
 }
 
+// Módulo modular para consultar la API 
 std::string consultar_genero_api(const std::string& uuid) {
-    std::string genero_detectado = "NO_DEFINIDO";
-    bool encontrado_en_cache = false;
-
-    #pragma omp critical(cache_access)
-    {
-        if (cache_clientes.find(uuid) != cache_clientes.end()) {
-            genero_detectado = cache_clientes[uuid];
-            encontrado_en_cache = true;
-        }
+    // 1. Primero revisamos si ya lo conocemos en la caché 
+    if (cache_clientes.find(uuid) != cache_clientes.end()) {
+        return cache_clientes[uuid];
     }
 
-    if (encontrado_en_cache) {
-        return genero_detectado;
-    }
-
+    // 2. Si no está en caché, le preguntamos a la API [cite: 65]
     CURL* curl = curl_easy_init();
     std::string readBuffer;
     long http_code = 0;
+    std::string genero_detectado = "NO_DEFINIDO";
 
     if(curl) {
-        // API real del profesor con la ruta corregida
-        std::string url = "https://api.sebastian.cl/cpyd/v1/person/" + uuid;
+        // Apuntamos a tu servidor simulado local en puerto 8080
+        std::string url = "http://localhost:8080/cpyd/person/" + uuid;
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -76,17 +74,13 @@ std::string consultar_genero_api(const std::string& uuid) {
         curl_easy_cleanup(curl);
     }
 
-    if (genero_detectado != "NO_DEFINIDO") {
-        #pragma omp critical(cache_access)
-        {
-            cache_clientes[uuid] = genero_detectado;
-        }
-    }
-
+    // 3. Lo guardamos en la caché antes de retornar para la próxima vez 
+    cache_clientes[uuid] = genero_detectado;
     return genero_detectado;
 }
 
 int main() {
+    // Inicialización global de curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
 
     std::ifstream archivo("reporte_26128.csv");
@@ -96,39 +90,34 @@ int main() {
     }
 
     std::string linea;
-    std::getline(archivo, linea); // Saltamos cabecera
+    // Saltamos la primera línea (cabecera)
+    std::getline(archivo, linea);
 
-    std::vector<std::string> lineas;
+    std::cout << "Procesando registros de transacciones de forma secuencial..." << std::endl;
+    int procesados = 0;
+
+    // Procesamos el CSV línea por línea [cite: 62]
     while (std::getline(archivo, linea)) {
-        lineas.push_back(linea);
-    }
-    archivo.close();
-
-    long total_lineas = lineas.size();
-    std::cout << "Lineas cargadas en memoria: " << total_lineas << ". Iniciando procesamiento..." << std::endl;
-
-    double tiempo_inicio = omp_get_wtime();
-
-    // Procesamos de forma secuencial segura para que la API del profe responda sin caerse
-    for (long i = 0; i < total_lineas; i++) {
-        std::stringstream ss(lineas[i]);
+        std::stringstream ss(linea);
         std::string celda;
         std::string monto_str = "";
         std::string uuid_cliente = "";
         int columna_actual = 1;
 
-        // Volvemos a tu separador original por punto y coma
         while (std::getline(ss, celda, ';')) {
             celda = limpiar_comillas(celda);
-            if (columna_actual == 7)  monto_str = celda;
-            if (columna_actual == 10) uuid_cliente = celda;
+            if (columna_actual == 7)  monto_str = celda;   // Monto
+            if (columna_actual == 10) uuid_cliente = celda; // UUID
             columna_actual++;
         }
 
         if (!monto_str.empty() && !uuid_cliente.empty()) {
             double monto = std::stod(monto_str);
+            
+            // Consultamos el género (utilizará caché de manera inteligente) [cite: 65, 66]
             std::string genero = consultar_genero_api(uuid_cliente);
 
+            // Asociamos el monto al género y acumulamos [cite: 75]
             if (genero == "FEMENINO") {
                 suma_femenino += monto;
                 cuenta_femenino++;
@@ -136,34 +125,28 @@ int main() {
                 suma_masculino += monto;
                 cuenta_masculino++;
             }
-        }
-
-        // Un pequeño respiro de 50 milisegundos para respetar el Rate Limiting real de la red UTEM
-        usleep(50000);
-
-        if (i % 50 == 0) {
-            std::cout << "Procesados " << i << " / " << total_lineas << " registros desde la API oficial..." << std::endl;
-            // Imprimimos un avance temprano para que veas que saca ambos géneros
-            if (cuenta_femenino > 0 || cuenta_masculino > 0) {
-                std::cout << "   [Progreso actual] Femenino contados: " << cuenta_femenino << " | Masculino contados: " << cuenta_masculino << std::endl;
+            
+            procesados++;
+            // Mostramos feedback rápido en la terminal cada 50 registros para ver avance
+            if (procesados % 50 == 0) {
+                std::cout << "Registros analizados de forma secuencial: " << procesados << "..." << std::endl;
             }
-        }
+       }
     }
 
-    double tiempo_total = omp_get_wtime() - tiempo_inicio;
+    archivo.close();
     curl_global_cleanup();
 
-    std::ofstream archivo_salida("resultados.txt");
-    if (archivo_salida.is_open()) {
-        if (cuenta_femenino > 0) archivo_salida << "FEMENINO = " << (suma_femenino / cuenta_femenino) << std::endl;
-        if (cuenta_masculino > 0) archivo_salida << "MASCULINO = " << (suma_masculino / cuenta_masculino) << std::endl;
-        archivo_salida << "TIEMPO = " << tiempo_total << " segundos" << std::endl;
-        archivo_salida.close();
+    // Calculamos y mostramos los promedios finales solicitados en el formato correcto
+    std::cout << "\n================ RESULTADOS ================" << std::endl;
+    if (cuenta_femenino > 0) {
+        std::cout << "FEMENINO = " << (suma_femenino / cuenta_femenino) << std::endl;
     }
-
-    if (cuenta_femenino > 0) std::cout << "FEMENINO = " << (suma_femenino / cuenta_femenino) << std::endl;
-    if (cuenta_masculino > 0) std::cout << "MASCULINO = " << (suma_masculino / cuenta_masculino) << std::endl;
-    std::cout << "TIEMPO = " << tiempo_total << " segundos" << std::endl;
+    if (cuenta_masculino > 0) {
+        std::cout << "MASCULINO = " << (suma_masculino / cuenta_masculino) << std::endl;
+    }
+    std::cout << "============================================" << std::endl;
 
     return 0;
 }
+
